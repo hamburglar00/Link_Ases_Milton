@@ -37,6 +37,11 @@
 
   <script>
     /***************************************************
+     * CONFIG GENERAL
+     ***************************************************/
+    const TELEGRAM_URL = ""; // ⚠️ Si está vacío → mostrará “No disponible”
+
+    /***************************************************
      * VARIANTES DE DISEÑO
      ***************************************************/
     const DESIGNS = {
@@ -52,10 +57,12 @@
               <a href="#" id="btnContactar" class="gn-btn gn-btn-solid">
                 <img src="imagenes/whatsapp.png" alt="" class="wa-ic"> CONTACTANOS
               </a>
+
               <a href="https://asesdelnorte.com/jugadores/index.php" target="_blank" rel="noopener" class="gn-btn gn-btn-outline">
                 <img src="imagenes/rocket_1f680.png" alt="" class="wa-ic"> JUGAR AHORA
               </a>
-              <a href="https://t.me/TU_BOT_ID" target="_blank" rel="noopener" class="gn-btn gn-btn-telegram" style="position:relative;">
+
+              <a href="${TELEGRAM_URL || '#'}" target="_blank" rel="noopener" id="btnTelegram" class="gn-btn gn-btn-telegram" style="position:relative;">
                 <img src="imagenes/telegram.png" alt="" class="wa-ic"> TELEGRAM
                 <span style="
                   position:absolute;
@@ -79,125 +86,112 @@
             </p>
           </div>
         `
-      },
-
-      telegram: {
-        probability: 0.3,
-        render: () => `
-          <div class="gn-card">
-            <h4>TODAS TUS CARGAS CON BONO</h4>
-            <p>🚨Nuevo beneficio exclusivo: jugando por Telegram obtenés bono en todas tus cargas y ahora con pagos automáticos al instante.</p>
-            <p style="font-style:italic;color:#ffbc0f;">¿Aún no tenés Telegram? Descargala y empezá a ganar.</p>
-
-            <div class="gn-actions">
-              <a href="https://t.me/TotiLolaBot?start=hola" target="_blank" class="gn-btn gn-btn-telegram">
-                <img src="imagenes/telegram.png" alt="" class="wa-ic"> TELEGRAM
-              </a>
-              <a href="https://asesdelnorte.com/jugadores/index.php" target="_blank" rel="noopener" class="gn-btn gn-btn-outline">
-                <img src="imagenes/rocket_1f680.png" alt="" class="wa-ic"> JUGAR AHORA
-              </a>
-            </div>
-          </div>
-        `
       }
     };
 
     /***************************************************
-     * ELECCIÓN ALEATORIA DE DISEÑO
+     * RENDER PRINCIPAL
      ***************************************************/
-    const rand = Math.random();
-    const design = rand < DESIGNS.whatsapp.probability ? "whatsapp" : "telegram";
-    document.getElementById("cardContainer").innerHTML = DESIGNS[design].render();
+    document.getElementById("cardContainer").innerHTML = DESIGNS.whatsapp.render();
 
     /***************************************************
-     * LÓGICA DE CONTACTO POR WHATSAPP
+     * LÓGICA WHATSAPP
      ***************************************************/
-    if (design === "whatsapp") {
-      const SERVICE_URL = "/api/get-random-phone";
-      const FALLBACK = [{ phone: "+5491169789243", weight: 1 }];
-      const TTL_MS = 5 * 60 * 1000;
-      const LS_KEY = `active_whatsapp_numbers_by_agency:1`;
+    const SERVICE_URL = "/api/get-random-phone";
+    const FALLBACK = [{ phone: "+5491169789243", weight: 1 }];
+    const TTL_MS = 5 * 60 * 1000;
+    const LS_KEY = `active_whatsapp_numbers_by_agency:1`;
 
-      function fetchWithTimeout(url, opt = {}, ms = 2500) {
-        const ctrl = new AbortController();
-        const id = setTimeout(() => ctrl.abort(), ms);
-        return fetch(url, { ...opt, signal: ctrl.signal }).finally(() => clearTimeout(id));
+    function fetchWithTimeout(url, opt = {}, ms = 2500) {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { ...opt, signal: ctrl.signal }).finally(() => clearTimeout(id));
+    }
+
+    function getCache() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; }
+    }
+
+    function setCache(numbers) {
+      localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), numbers }));
+    }
+
+    function parseApiPayload(data) {
+      if (data && typeof data === "object" && (typeof data.phone_number === "string" || typeof data.phone_number === "number")) {
+        return [{ phone: String(data.phone_number), weight: 1 }];
       }
-
-      function getCache() {
-        try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; }
-      }
-
-      function setCache(numbers) {
-        localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), numbers }));
-      }
-
-      function parseApiPayload(data) {
-        if (data && typeof data === "object" && (typeof data.phone_number === "string" || typeof data.phone_number === "number")) {
-          return [{ phone: String(data.phone_number), weight: 1 }];
-        }
-        if (typeof data === "string") return [{ phone: data, weight: 1 }];
-        const arr = (Array.isArray(data?.numbers) && data.numbers)
-          || (Array.isArray(data?.phone_numbers) && data.phone_numbers)
-          || (Array.isArray(data) && data)
-          || [];
-        return arr.map(item => {
-          if (typeof item === "string") return { phone: item, weight: 1 };
-          const phone = String(item?.phone ?? item?.phone_number ?? "").trim();
-          const w = Number(item?.weight ?? 1);
-          return { phone, weight: isFinite(w) && w > 0 ? w : 1 };
-        });
-      }
-
-      function normalizeNumbers(list) {
-        return (Array.isArray(list) ? list : [])
-          .map(n => ({ phone: String(n.phone || "").trim(), weight: Number(n.weight || 1) }))
-          .filter(n => /^\+?\d{8,17}$/.test(n.phone) && n.weight > 0);
-      }
-
-      async function loadNumbersOnce() {
-        const cached = getCache();
-        try {
-          const res = await fetchWithTimeout(SERVICE_URL, { headers: { "Cache-Control": "no-store" } }, 2500);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          const parsed = parseApiPayload(data);
-          const clean = normalizeNumbers(parsed);
-          if (clean.length) { setCache(clean); return clean; }
-          throw new Error("Invalid payload");
-        } catch (e) {
-          const ok = cached?.numbers?.length && Date.now() - (cached.ts || 0) < TTL_MS;
-          return ok ? cached.numbers : normalizeNumbers(FALLBACK);
-        }
-      }
-
-      function pickWeightedRandom(list) {
-        const total = list.reduce((s, it) => s + (Number(it.weight) || 1), 0);
-        let r = Math.random() * total;
-        for (const it of list) {
-          r -= (Number(it.weight) || 1);
-          if (r <= 0) return it;
-        }
-        return list[list.length - 1];
-      }
-
-      function buildWaUrl(phone, text = "") {
-        const msg = text ? encodeURIComponent(text) : "";
-        const cleanPhone = phone.replace(/\D/g, "");
-        return `https://api.whatsapp.com/send?phone=${cleanPhone}${msg ? `&text=${msg}` : ""}`;
-      }
-
-      let activeList = [];
-      loadNumbersOnce().then(list => { activeList = list; });
-
-      document.getElementById("btnContactar").addEventListener("click", (e) => {
-        e.preventDefault();
-        if (!activeList.length) return;
-        const chosen = pickWeightedRandom(activeList);
-        const mensaje = "¡Hola! Me pasás mi usuario 🚀";
-        location.href = buildWaUrl(chosen.phone, mensaje);
+      if (typeof data === "string") return [{ phone: data, weight: 1 }];
+      const arr = (Array.isArray(data?.numbers) && data.numbers)
+        || (Array.isArray(data?.phone_numbers) && data.phone_numbers)
+        || (Array.isArray(data) && data)
+        || [];
+      return arr.map(item => {
+        if (typeof item === "string") return { phone: item, weight: 1 };
+        const phone = String(item?.phone ?? item?.phone_number ?? "").trim();
+        const w = Number(item?.weight ?? 1);
+        return { phone, weight: isFinite(w) && w > 0 ? w : 1 };
       });
     }
+
+    function normalizeNumbers(list) {
+      return (Array.isArray(list) ? list : [])
+        .map(n => ({ phone: String(n.phone || "").trim(), weight: Number(n.weight || 1) }))
+        .filter(n => /^\+?\d{8,17}$/.test(n.phone) && n.weight > 0);
+    }
+
+    async function loadNumbersOnce() {
+      const cached = getCache();
+      try {
+        const res = await fetchWithTimeout(SERVICE_URL, { headers: { "Cache-Control": "no-store" } }, 2500);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const parsed = parseApiPayload(data);
+        const clean = normalizeNumbers(parsed);
+        if (clean.length) { setCache(clean); return clean; }
+        throw new Error("Invalid payload");
+      } catch (e) {
+        const ok = cached?.numbers?.length && Date.now() - (cached.ts || 0) < TTL_MS;
+        return ok ? cached.numbers : normalizeNumbers(FALLBACK);
+      }
+    }
+
+    function pickWeightedRandom(list) {
+      const total = list.reduce((s, it) => s + (Number(it.weight) || 1), 0);
+      let r = Math.random() * total;
+      for (const it of list) {
+        r -= (Number(it.weight) || 1);
+        if (r <= 0) return it;
+      }
+      return list[list.length - 1];
+    }
+
+    function buildWaUrl(phone, text = "") {
+      const msg = text ? encodeURIComponent(text) : "";
+      const cleanPhone = phone.replace(/\D/g, "");
+      return `https://api.whatsapp.com/send?phone=${cleanPhone}${msg ? `&text=${msg}` : ""}`;
+    }
+
+    let activeList = [];
+    loadNumbersOnce().then(list => { activeList = list; });
+
+    document.getElementById("btnContactar").addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!activeList.length) return;
+      const chosen = pickWeightedRandom(activeList);
+      const mensaje = "¡Hola! Me pasás mi usuario 🚀";
+      location.href = buildWaUrl(chosen.phone, mensaje);
+    });
+
+    /***************************************************
+     * LÓGICA TELEGRAM “NO DISPONIBLE”
+     ***************************************************/
+    const btnTelegram = document.getElementById("btnTelegram");
+    btnTelegram.addEventListener("click", (e) => {
+      if (!TELEGRAM_URL) {
+        e.preventDefault();
+        alert("❌ No disponible por el momento.");
+      }
+    });
   </script>
 </body>
 </html>
