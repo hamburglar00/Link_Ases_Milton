@@ -4,13 +4,15 @@
   margin: 0;
   padding: 0;
 }
-html,
-body {
+
+html, body {
   height: 100%;
 }
+
 html {
   background: #000;
 }
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   color: #fff;
@@ -58,38 +60,39 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* === MASCOTA === */
-.gn-mascot {
+/* === LOGO DE ASES (sobresaliente) === */
+.gn-logo {
   position: absolute;
-  top: -225px;
+  top: -60%;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1;
+  z-index: 3;
+  width: 180px;
+  max-width: 60%;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.65));
   pointer-events: none;
-}
-.gn-mascot img {
-  width: 240px;
-  height: 240px;
-  display: block;
-  object-fit: contain;
-  border: none;
-  filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.75));
+  animation: fadeInUp 1s ease-out;
 }
 
-/* === TÍTULO Y TEXTO === */
-.gn-header h1 {
-  font-size: clamp(20px, 3.6vw, 28px);
-  font-weight: 900;
-  line-height: 1.15;
-  margin-bottom: 10px;
-  color: #ffffff; /* blanco */
-  text-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+@media (max-width: 480px) {
+  .gn-logo {
+    top: -50%;
+    width: 150px;
+  }
 }
-.gn-text {
-  color: #cccccc;
-  font-size: clamp(14px, 3.4vw, 16px);
-  line-height: 1.55;
-  margin: 6px 0 20px;
+
+/* === TÍTULOS Y TEXTOS === */
+h4 {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+}
+
+p {
+  text-align: center;
+  color: #ccc;
+  line-height: 1.5;
 }
 
 /* === BOTONERA === */
@@ -114,14 +117,16 @@ body {
   padding: 12px 18px;
   border-radius: 14px;
   font-weight: 800;
-  font-size: clamp(14px, 2.8vw, 16px);
+  font-size: 15px;
   text-decoration: none;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.25s ease, filter 0.15s ease;
 }
+
 .gn-btn:active {
   transform: scale(0.985);
 }
+
 .gn-btn img {
   width: 20px;
   height: 20px;
@@ -133,6 +138,7 @@ body {
   background: linear-gradient(135deg, #22ff8f, #14dc6d);
   box-shadow: 0 0 16px rgba(32, 224, 124, 0.45);
 }
+
 .gn-btn-solid:hover {
   filter: saturate(1.05);
   box-shadow: 0 0 22px rgba(32, 224, 124, 0.6);
@@ -145,6 +151,7 @@ body {
   box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
   border: 1.5px solid #333;
 }
+
 .gn-btn-outline:hover {
   filter: brightness(1.1);
   box-shadow: 0 0 18px rgba(255, 255, 255, 0.15);
@@ -156,6 +163,7 @@ body {
   background: linear-gradient(135deg, #37aee2, #1e96c8);
   box-shadow: 0 0 16px rgba(80, 190, 255, 0.45);
 }
+
 .gn-btn-telegram:hover {
   filter: saturate(1.08);
   box-shadow: 0 0 22px rgba(80, 190, 255, 0.7);
@@ -167,40 +175,25 @@ body {
   height: 20px;
   display: inline-block;
 }
-.gn-ic {
-  width: 40px;
-  height: 40px;
-  display: inline-block;
-}
 
-/* === TEXTO DE BONO === */
-p[style*="BONO EN TODAS TUS CARGAS"] {
-  color: #bbbbbb !important;
+/* === ANIMACIONES === */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
-
-/* === LOGO DE ASES === */
-.gn-logo {
-  position: absolute;
-  top: -60%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
-  width: 180px;
-  max-width: 60%;
-  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.65));
-  pointer-events: none;
-}
-
-@media (max-width: 480px) {
-  .gn-logo {
-    top: -50%;
-    width: 150px;
-}
-
 
 /* === ACCESIBILIDAD === */
 @media (prefers-reduced-motion: reduce) {
   .gn-btn {
     transition: none;
+  }
+  .gn-logo {
+    animation: none;
   }
 }
